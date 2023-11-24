@@ -9,13 +9,16 @@ The architecture involves two primary components:
 
 ```mermaid
 graph TD;
-    subgraph Container;
-		B[StackQL\nServer];
-		C[PostgreSQL\nInstance];
-    end;
-    A[StackQL\nClient] <-- postgre wire protocol\n(port 7432) --> B;
-    B <-- gets data from --> E[Cloud/SaaS\nProviders];
-    B <-- uses --> C; 
+    classDef backend fill:#f9f,stroke:#333,stroke-width:4px;
+    
+    B[StackQL\nServer]:::backend;
+    C[PostgreSQL\nInstance]:::backend;
+    
+    A[StackQL\nClient] -- postgre wire protocol\n(port 7432) --> B;
+    B -- gets data from --> E[Cloud/SaaS\nProviders];
+    B -- uses --> C;
+    
+    L[stackql-server\ncomponents]:::backend;
 ```
 
 ## Running the Container
