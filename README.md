@@ -11,9 +11,7 @@ The architecture involves two primary components:
 graph TD;
     subgraph Container;
         B[StackQL Server];
-        subgraph Backend Server;
-            C[PostgreSQL Instance];
-        end;
+        C[PostgreSQL Instance];
     end;
     A[StackQL Client] <-- postgre wire protocol port 7432 --> B;
     B <-- gets data from --> E[Cloud/SaaS Providers];
