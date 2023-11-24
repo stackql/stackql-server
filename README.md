@@ -8,16 +8,16 @@ The architecture involves two primary components:
 2. **PostgreSQL Server**: Backend database server used for relational algebra and temporary storage (for materalized views).
 
 ```mermaid
-graph TD
-    subgraph Container
-        B[StackQL\nServer]
-        subgraph Backend Server
-            C[PostgreSQL\nInstance]
-        end
-    end
-    A[StackQL\nClient] <-- postgre wire protocol\n(port 7432) --> B
-    B <-- gets data from --> E[Cloud/SaaS\nProviders]
-    B <-- uses --> C
+graph TD;
+    subgraph Container;
+        B[StackQL\nServer];
+        subgraph Backend Server;
+            C[PostgreSQL\nInstance];
+        end;
+    end;
+    A[StackQL\nClient] <-- postgre wire protocol\n(port 7432) --> B;
+    B <-- gets data from --> E[Cloud/SaaS\nProviders];
+    B <-- uses --> C;
 ```
 
 ## Running the Container
