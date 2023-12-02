@@ -18,13 +18,21 @@ graph TD;
     B <-- uses --> C;
 ```
 
-## Running the Container
+## Running the Container from the DockerHub Image
 
 To run the container, execute the following command:
 
 ```bash
-docker build --no-cache -t stackql_postgres .
-docker run -d -p 7432:7432 stackql_postgres
+docker run -d -p 7432:7432 stackql/stackql-server
+```
+
+## Building and Running the Container
+
+To run the container, execute the following command:
+
+```bash
+docker build --no-cache -t stackql-server .
+docker run -d -p 7432:7432 stackql-server
 ```
 
 ## Submitting a Query to the StackQL Server
