@@ -3,21 +3,14 @@
 # Table of Contents
 
 1. [Architecture](#architecture)
-   - [StackQL Server](#stackql-server)
-   - [PostgreSQL Server](#postgresql-server)
 2. [Deployment Options](#deployment-options)
+   - [Container Deployment Modes](#container-deployment-modes)
+   - [Database Configuration Modes](#database-configuration-modes)
+   - [Client/Server Authentication Modes](#clientserver-authentication-modes)
 3. [Authenticating to Cloud Providers](#authenticating-to-cloud-providers)
 4. [Building and Running the Container](#building-and-running-the-container)
    - [Without mTLS (`SECURE_MODE=false`)](#without-mtls-secure_modefalse)
-     - [Building and Running Locally](#building-and-running-locally)
-     - [Stopping the Container](#stopping-the-container)
-     - [Running from Dockerhub Image](#running-from-dockerhub-image)
-     - [Connecting to the Server](#connecting-to-the-server)
    - [With mTLS (`SECURE_MODE=true`)](#with-mtls-secure_modetrue)
-     - [Preparing Certificates and Keys](#preparing-certificates-and-keys)
-     - [Building and Running Locally](#building-and-running-locally-1)
-     - [Running Using Dockerhub Image](#running-using-dockerhub-image)
-     - [Connecting to the Server](#connecting-to-the-server-1)
 5. [Running the Container in Azure Container Instances (ACI)](#running-the-container-in-azure-container-instances-aci)
    - [Push Image to Azure Container Registry (ACR)](#push-image-to-azure-container-registry-acr)
    - [Start ACI Container](#start-aci-container)
@@ -52,15 +45,25 @@ graph TD;
 
 The different deployment options are as follows:
 
-### Local DB Mode
+### Container Deployment Modes
+- **Deployment via ACI**: Leverages Azure Container Instances for scalable, cloud-native deployments.
+- **Deployed using `docker run`**: Ideal for containerized environments, ensuring consistency and portability across different systems.
 
-`stackql-server` can be deployed with a local embedded Postgres DB backend.  This can be used with mTLS configured (using `SECURE_MODE=true`) or without mTLS (`SECURE_MODE=false`).  Server certificates and keys can be copied into the container or fetched from a remote location (if `KEYVAULT_NAME` && `KEYVAULT_CREDENTIAL` are supplied).
+### Database Configuration Modes
+- **Local DB Mode**: 
+  - Activated when `POSTGRES_HOST` is set to `127.0.0.1` (default).
+  - Runs a local, embedded PostgreSQL backend database.
+- **Remote DB Mode**: 
+  - Triggered when `POSTGRES_HOST` is set to any value other than `127.0.0.1`.
+  - Connects to an externally hosted PostgreSQL database.
 
-### Remote DB Mode
-
-If `POSTGRES_HOST` is set to a value other than `127.0.0.1` a remote DB connection will be used for the relational algebra backend.  This can be used with mTLS configured (using `SECURE_MODE=true`) or without mTLS (`SECURE_MODE=false`).  Server certificates and keys can be copied into the container or fetched from a remote location (if `KEYVAULT_NAME` && `KEYVAULT_CREDENTIAL` are supplied).
-
-
+### Client/Server Authentication Modes
+- **mTLS Authentication**:
+  - Enabled by setting `SECURE_MODE=true` (default is `false`).
+  - Utilizes mutual TLS (mTLS) for enhanced security in communications.
+- **Keys and Certificates**:
+  - Can be directly copied into the container.
+  - Alternatively, sourced from Azure Key Vault if `KEYVAULT_NAME` and `KEYVAULT_CREDENTIAL` are provided.
 
 ## Authenticating to Cloud Providers
 
