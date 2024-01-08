@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Set directory paths
-CERT_DIR="/opt/stackql/srv/credentials"
+# CERT_DIR="/opt/stackql/srv/credentials"
+
+CERT_DIR="/tmp"
 
 # Check if certificates and keys are present in the environment variables or the directory
 check_certs_and_keys() {
