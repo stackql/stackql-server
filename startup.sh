@@ -1,9 +1,25 @@
 #!/bin/bash
 
-# Set directory paths
-# CERT_DIR="/opt/stackql/srv/credentials"
+# External volume directory
+EXT_VOL_CERT_DIR="/opt/stackql/srv/credentials"
+# Fallback local directory
+LOCAL_CERT_DIR="/usr/local/certs"
+# Directory to hold certificates
+CERT_DIR=""
 
-CERT_DIR="/tmp"
+# Function to check and set the CERT_DIR
+set_cert_dir() {
+    # Check if external volume directory is accessible
+    if [ -d "$EXT_VOL_CERT_DIR" ] && [ -w "$EXT_VOL_CERT_DIR" ]; then
+        echo "Using external volume for certificates."
+        CERT_DIR="$EXT_VOL_CERT_DIR"
+    else
+        echo "External volume is not accessible. Using local directory for certificates."
+        # Create local directory if it does not exist
+        mkdir -p "$LOCAL_CERT_DIR"
+        CERT_DIR="$LOCAL_CERT_DIR"
+    fi
+}
 
 # Check if certificates and keys are present in the environment variables or the directory
 check_certs_and_keys() {
@@ -30,6 +46,7 @@ check_certs_and_keys() {
 start_stackql() {
     if [ "$SECURE_MODE" = "true" ]; then
         echo "Running with mTLS..."
+        set_cert_dir
         check_certs_and_keys
         CLIENT_CA_ENCODED=$(base64 -w 0 "$CERT_DIR/client_cert.pem")
         # Start the server with TLS configuration
@@ -42,7 +59,6 @@ start_stackql() {
             \"clientCAs\": [\"$CLIENT_CA_ENCODED\"] \
         }"
     else
-        # Start the server without TLS configuration
         echo "Running without mTLS..."
         /srv/stackql/stackql srv --approot=/srv/stackql/.stackql \
         --pgsrv.port=$PGSRV_PORT \
