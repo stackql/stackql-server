@@ -45,9 +45,9 @@ check_certs_and_keys() {
 # Fetch and write secrets if needed
 fetch_and_write_secrets() {
     echo "Fetching secrets from Azure Key Vault..."
-    local server_cert=$(fetch_secret "stackql_server_cert")
-    local server_key=$(fetch_secret "stackql_server_key")
-    local client_cert=$(fetch_secret "stackql_client_cert")
+    local server_cert=$(fetch_secret "stackql-server-cert")
+    local server_key=$(fetch_secret "stackql-server-key")
+    local client_cert=$(fetch_secret "stackql-client-cert")
 
     write_cert_or_key "$server_cert" "$CERT_DIR/server_cert.pem"
     write_cert_or_key "$server_key" "$CERT_DIR/server_key.pem"
