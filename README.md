@@ -13,12 +13,6 @@
    - [Without mTLS (`SECURE_MODE=false`)](#without-mtls-secure_modefalse)
    - [With mTLS (`SECURE_MODE=true`)](#with-mtls-secure_modetrue)
 5. [Running the Container in Azure Container Instances (ACI)](#running-the-container-in-azure-container-instances-aci)
-   - [Push Image to Azure Container Registry (ACR)](#push-image-to-azure-container-registry-acr)
-   - [Start ACI Container](#start-aci-container)
-   - [Set Secrets in Azure Key Vault (AKV)](#set-secrets-in-azure-key-vault-akv)
-   - [Retrieve Certificates using KEYVAULT_NAME and KEYVAULT_CREDENTIAL](#retrieve-certificates-using-keyvault_name-and-keyvault_credential)
-   - [Getting Fully Qualified Domain Name (FQDN) of the ACI](#getting-fully-qualified-domain-name-fqdn-of-the-aci)
-   - [Connecting to the Server](#connecting-to-the-server-2)
 
 ## Architecture
 
@@ -28,18 +22,16 @@ The architecture consists of two primary components:
 2. **PostgreSQL Server**: A backend database server used for relational algebra and temporary storage, particularly for materialized views.
 
 ```mermaid
-graph TD;
-    subgraph Docker_or_ACI["Docker or Azure Container Instances (ACI)"];
-        B[StackQL Server];
-        C["Local PostgreSQL Instance\n(if POSTGRES_HOST == 127.0.0.1)"];
-        B <-- uses --> C;
-    end;
-    A[StackQL Client] <-- PostgreSQL wire protocol port 7432\n(SECURE_MODE uses mTLS) --> B;
-    B <-- gets data from\nor interacts with --> E[Cloud/SaaS Providers];
-    KV[Azure Key Vault] -.->|"Stores Secrets\nfor SECURE_MODE\n(if KEYVAULT_NAME && KEYVAULT_CREDENTIAL)"| B;
-
-    %% Positioning the remote DB at the bottom
-    B <-.->|if POSTGRES_HOST != 127.0.0.1| RemoteDB["Remote PostgreSQL Database"];
+flowchart TD;
+subgraph Docker_or_ACI["Docker or Azure Container Instances (ACI)"];
+B[StackQL Server];
+C["Local PostgreSQL Instance\n(if POSTGRES_HOST == 127.0.0.1)"];
+B <-- uses --> C;
+end;
+A[StackQL Client] <-- uses --> B;
+B <-- gets data from\nor interacts with --> E[Cloud/SaaS Providers];
+KV[Azure Key Vault] -.->|"Stores Secrets\nfor SECURE_MODE\n(if KEYVAULT_NAME && KEYVAULT_CREDENTIAL)"| B;
+B <-.->|if POSTGRES_HOST != 127.0.0.1| RemoteDB["Remote PostgreSQL Database"];
 ```
 
 ## Deployment Options
