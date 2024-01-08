@@ -192,6 +192,10 @@ az keyvault secret set \
 2. **Create an Azure Container Instance:**
 To create an instance, use the Azure CLI. Replace values for `name`, `resource-group`, and `dns-name-label` with your specific details. The `--dns-name-label` should be a unique DNS name for the ACI.
 ```bash
+SERVER_CERT=$(base64 -w 0 creds/server_cert.pem)
+SERVER_KEY=$(base64 -w 0 creds/server_key.pem)
+CLIENT_CERT=$(base64 -w 0 creds/client_cert.pem)
+
 az container create \
 --name stackqlserver \
 --resource-group stackql-activity-monitor-rg \
@@ -200,14 +204,10 @@ az container create \
 --ports 7432 \
 --protocol TCP \
 --environment-variables \
-POSTGRES_HOST=postgres-host \
-POSTGRES_PORT=postgres-port \
-POSTGRES_USER=postgres-user \
-POSTGRES_PASSWORD=postgres-password \
-POSTGRES_DB=postgres-db \
-SECURE_MODE=false \
-KEYVAULT_NAME=keyvault-name \
-KEYVAULT_CREDENTIAL=keyvault-credential
+SECURE_MODE=true \
+SERVER_CERT=$SERVER_CERT \
+SERVER_KEY=$SERVER_KEY \
+CLIENT_CERT=$CLIENT_CERT
 ```
 Make sure to replace the environment variable values with the ones you need for your setup.
 
