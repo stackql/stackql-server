@@ -29,9 +29,9 @@ write_cert_or_key() {
 
 # Check if certificates and keys are present in the directory
 check_certs_and_keys() {
-    local server_cert="$CERT_DIR/pg_server_cert.pem"
-    local server_key="$CERT_DIR/pg_server_key.pem"
-    local client_cert="$CERT_DIR/pg_client_cert.pem"
+    local server_cert="$CERT_DIR/server_cert.pem"
+    local server_key="$CERT_DIR/server_key.pem"
+    local client_cert="$CERT_DIR/client_cert.pem"
 
     if [ ! -f "$server_cert" ] || [ ! -f "$server_key" ] || [ ! -f "$client_cert" ]; then
         echo "Certificates or keys are missing in $CERT_DIR"
@@ -45,13 +45,13 @@ check_certs_and_keys() {
 # Fetch and write secrets if needed
 fetch_and_write_secrets() {
     echo "Fetching secrets from Azure Key Vault..."
-    local server_cert=$(fetch_secret "pg_server_cert")
-    local server_key=$(fetch_secret "pg_server_key")
-    local client_cert=$(fetch_secret "pg_client_cert")
+    local server_cert=$(fetch_secret "stackql_server_cert")
+    local server_key=$(fetch_secret "stackql_server_key")
+    local client_cert=$(fetch_secret "stackql_client_cert")
 
-    write_cert_or_key "$server_cert" "$CERT_DIR/pg_server_cert.pem"
-    write_cert_or_key "$server_key" "$CERT_DIR/pg_server_key.pem"
-    write_cert_or_key "$client_cert" "$CERT_DIR/pg_client_cert.pem"
+    write_cert_or_key "$server_cert" "$CERT_DIR/server_cert.pem"
+    write_cert_or_key "$server_key" "$CERT_DIR/server_key.pem"
+    write_cert_or_key "$client_cert" "$CERT_DIR/client_cert.pem"
 
     echo "Secrets fetched and written to $CERT_DIR"
 }
@@ -71,15 +71,15 @@ start_stackql() {
         # Check if certificates and keys are present and set their permissions
         check_certs_and_keys
 
-        CLIENT_CA_ENCODED=$(base64 -w 0 "$CERT_DIR/pg_client_cert.pem")
+        CLIENT_CA_ENCODED=$(base64 -w 0 "$CERT_DIR/client_cert.pem")
 
         # Start the server with TLS configuration
         /srv/stackql/stackql srv --approot=/srv/stackql/.stackql \
         --pgsrv.port=$PGSRV_PORT \
         --sqlBackend="{\"dbEngine\": \"postgres_tcp\", \"sqlDialect\": \"postgres\", \"dsn\": \"postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}\"}" \
         --pgsrv.tls="{ \
-            \"keyFilePath\": \"$CERT_DIR/pg_server_key.pem\", \
-            \"certFilePath\": \"$CERT_DIR/pg_server_cert.pem\", \
+            \"keyFilePath\": \"$CERT_DIR/server_key.pem\", \
+            \"certFilePath\": \"$CERT_DIR/server_cert.pem\", \
             \"clientCAs\": [\"$CLIENT_CA_ENCODED\"] \
         }"
     else

@@ -8,7 +8,8 @@
    - [Database Configuration Modes](#database-configuration-modes)
    - [Client/Server Authentication Modes](#clientserver-authentication-modes)
 3. [Authenticating to Cloud Providers](#authenticating-to-cloud-providers)
-4. [Building and Running the Container](#building-and-running-the-container)
+4. [Building the Container](#building-the-container)
+4. [Running the Container](#running-the-container)
    - [Without mTLS (`SECURE_MODE=false`)](#without-mtls-secure_modefalse)
    - [With mTLS (`SECURE_MODE=true`)](#with-mtls-secure_modetrue)
 5. [Running the Container in Azure Container Instances (ACI)](#running-the-container-in-azure-container-instances-aci)
@@ -69,37 +70,29 @@ The different deployment options are as follows:
 
 Populate the necessary environment variables to authenticate with your specific cloud providers. For more information on which environment variables to populate, see the [StackQL provider registry](https://github.com/stackql/stackql-provider-registry) documentation.
 
-## Building and Running the Container
+## Building the Container
+
+**To build:**
+```bash
+docker build --no-cache -t stackql-server .
+```
+
+## Running the Container
 
 ### Without mTLS (`SECURE_MODE=false`)
 
-**To build and run locally:**
+**To run locally:**
 ```bash
-docker build --no-cache -t stackql-server .
 # Use -e to supply provider credentials as needed (GitHub credentials used in this example)
 docker run -d -p 7432:7432 \
 -e STACKQL_GITHUB_USERNAME \
 -e STACKQL_GITHUB_PASSWORD \
 stackql-server
-```
-
-**To stop the container:**
-```bash
-docker stop $(docker ps -a -q --filter ancestor=stackql-server --format="{{.ID}}")
-```
-
-**To run from the Dockerhub image:**
-```bash
-# Use -e to supply provider credentials as needed (GitHub credentials used in this example)
+# or if using the Dockerhub image...
 docker run -d -p 7432:7432 \
 -e STACKQL_GITHUB_USERNAME \
 -e STACKQL_GITHUB_PASSWORD \
 stackql/stackql-server
-```
-
-**To stop the container:**
-```bash
-docker stop $(docker ps -a -q --filter ancestor=stackql/stackql-server --format="{{.ID}}")
 ```
 
 **Connecting to the server:**
@@ -107,18 +100,25 @@ docker stop $(docker ps -a -q --filter ancestor=stackql/stackql-server --format=
 psql -h localhost -p 7432 -U stackql -d stackql
 ```
 
+**To stop the container:**
+```bash
+docker stop $(docker ps -a -q --filter ancestor=stackql-server)
+# or if using the Dockerhub image...
+docker stop $(docker ps -a -q --filter ancestor=stackql/stackql-server)
+```
+
 ### With mTLS (`SECURE_MODE=true`)
 
 **To prepare certificates and keys:**
 ```bash
 # Follow these steps to generate Root CA, Server Cert, and Client Cert
-[Instructions for certificate generation here]
+openssl req -x509 -keyout creds/server_key.pem -out creds/server_cert.pem -config creds/openssl.cnf -days 365
+openssl req -x509 -keyout creds/client_key.pem -out creds/client_cert.pem -config creds/openssl.cnf -days 365
+chmod 400 creds/client_key.pem
 ```
 
-**To build and run locally:**
+**To run locally:**
 ```bash
-docker build --no-cache -t stackql-server .
-# Use -e to supply provider credentials as needed (GitHub credentials used in this example)
 docker run -d -p 7432:7432 \
 -e STACKQL_GITHUB_USERNAME \
 -e STACKQL_GITHUB_PASSWORD \
@@ -136,26 +136,93 @@ docker run -d -p 7432:7432 \
 stackql/stackql-server
 ```
 
-**Connect to the server:**
+**Connecting to the Secure Server:**
 ```bash
-psql "sslmode=verify-ca sslrootcert=creds/ca.crt \
-sslcert=creds/client.crt sslkey=creds/client.key \
-host=localhost port=7432 user=stackql dbname=stackql"
+export PGSSLCERT=creds/client_cert.pem
+export PGSSLKEY=creds/client_key.pem
+export PGSSLROOTCERT=creds/server_cert.pem
+export PGSSLMODE=require
+psql -h localhost -p 7432 -d stackql
 ```
 
 ## Running the Container in Azure Container Instances (ACI)
 
-### Steps to deploy:
+To deploy the container in Azure Container Instances (ACI) using an image from Docker Hub, you can follow these steps:
 
-1. **Push Image to Azure Container Registry (ACR):**
-   - [Instructions for pushing image to ACR]
-2. **Start ACI Container:**
-   - [Instructions to start ACI container]
-3. **Set Secrets in Azure Key Vault (AKV):**
-   - [Instructions to set secrets in AKV]
-4. **Use KEYVAULT_NAME and KEYVAULT_CREDENTIAL to Retrieve Certificates:**
-   - [Instructions for retrieving certs using Key Vault credentials]
-5. **Get Fully Qualified Domain Name (FQDN) of the ACI:**
-   - [Instructions to get FQDN]
-6. **Connect to the Server:**
-   - [Instructions for server connection]
+1. **Set Secrets in Azure Key Vault (AKV):**
+If you're using Azure Key Vault for storing secrets, replace the `vault-name` and the values with your specific details:
+```bash
+# create secret for stackql server cert
+az keyvault secret set \
+--vault-name stackqlkv \
+--name stackql_server_cert \
+--value secretvalue
+# create secret for stackql server key
+az keyvault secret set \
+--vault-name stackqlkv \
+--name stackql_server_key \
+--value secretvalue
+# create secret for stackql client cert
+az keyvault secret set \
+--vault-name stackqlkv \
+--name stackql_client_cert \
+--value secretvalue
+```
+
+2. **Create an Azure Container Instance:**
+To create an instance, use the Azure CLI. Replace values for `name`, `resource-group`, and `dns-name-label` with your specific details. The `--dns-name-label` should be a unique DNS name for the ACI.
+```bash
+az container create \
+--name stackqlserver \
+--resource-group stackql-activity-monitor-rg \
+--image docker.io/stackql/stackql-server:latest \
+--dns-name-label stackql \
+--ports 7432 \
+--protocol TCP \
+--environment-variables \
+POSTGRES_HOST=postgres-host \
+POSTGRES_PORT=postgres-port \
+POSTGRES_USER=postgres-user \
+POSTGRES_PASSWORD=postgres-password \
+POSTGRES_DB=postgres-db \
+SECURE_MODE=false \
+KEYVAULT_NAME=keyvault-name \
+KEYVAULT_CREDENTIAL=keyvault-credential
+```
+Make sure to replace the environment variable values with the ones you need for your setup.
+
+3. **Retrieve the Fully Qualified Domain Name (FQDN) of the ACI:**
+After the ACI is successfully deployed, retrieve its FQDN:
+```bash
+az container show \
+--name stackqlserver \
+--resource-group stackql-activity-monitor-rg \
+--query ipAddress.fqdn \
+--output tsv
+```
+This FQDN is used to connect to your StackQL server.
+
+4. **Connect to the Server:**
+Use the FQDN obtained above to connect to your StackQL server using a PostgreSQL client:
+```bash
+psql -h stackql.eastus.azurecontainer.io -p 7432 -U stackql -d stackql
+```
+For connections over mTLS, ensure that the client machine has the necessary client certificates configured, for example:
+
+```bash
+export PGSSLCERT=creds/client_cert.pem
+export PGSSLKEY=creds/client_key.pem
+export PGSSLROOTCERT=creds/server_cert.pem
+export PGSSLMODE=require
+psql -h stackql.eastus.azurecontainer.io -p 7432 -d stackql
+```
+
+5. **Monitor the Container Instance:**
+
+To quickly check the logs of your container instance, you can use the Azure CLI:
+```bash
+az container logs \
+--resource-group stackql-activity-monitor-rg \
+--name stackqlserver
+```
+This command retrieves the logs produced by the container.
