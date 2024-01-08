@@ -30,7 +30,7 @@ B <-- uses --> C;
 end;
 A[StackQL Client] <-- uses --> B;
 B <-- gets data from\nor interacts with --> E[Cloud/SaaS Providers];
-KV[Azure Key Vault] -.->|"Stores Secrets\nfor SECURE_MODE\n(if KEYVAULT_NAME && KEYVAULT_CREDENTIAL)"| B;
+%% KV[Azure Key Vault] -.->|"Stores Secrets\nfor SECURE_MODE\n(if KEYVAULT_NAME && KEYVAULT_CREDENTIAL)"| B;
 B <-.->|if POSTGRES_HOST != 127.0.0.1| RemoteDB["Remote PostgreSQL Database"];
 ```
 
@@ -64,7 +64,8 @@ Populate the necessary environment variables to authenticate with your specific 
 
 ## Building the Container
 
-**To build:**
+To build the container, run the following command:
+
 ```bash
 docker build --no-cache -t stackql-server .
 ```
@@ -73,7 +74,8 @@ docker build --no-cache -t stackql-server .
 
 ### Without mTLS (`SECURE_MODE=false`)
 
-**To run locally:**
+To run the container locally without mTLS, use the following command:
+
 ```bash
 # Use -e to supply provider credentials as needed (GitHub credentials used in this example)
 docker run -d -p 7432:7432 \
@@ -88,13 +90,15 @@ docker run -d -p 7432:7432 \
 stackql/stackql-server
 ```
 
-**Connecting to the server:**
+To connect to the server (not configured for mTLS), use the following command:
+
 ```bash
 export PGSSLMODE=allow # or disable
 psql -h localhost -p 7432 -U stackql -d stackql
 ```
 
-**To stop the container:**
+To stop the container, use the following command:
+
 ```bash
 docker stop $(docker ps -a -q --filter ancestor=stackql-server)
 
@@ -105,7 +109,8 @@ docker stop $(docker ps -a -q --filter ancestor=stackql/stackql-server)
 
 ### With mTLS (`SECURE_MODE=true`)
 
-**To prepare certificates and keys:**
+To prepare certificates and keys, run the following commands:
+
 ```bash
 # Follow these steps to generate Root CA, Server Cert, and Client Cert
 openssl req -x509 -keyout creds/server_key.pem -out creds/server_cert.pem -config creds/openssl.cnf -days 365
@@ -113,18 +118,17 @@ openssl req -x509 -keyout creds/client_key.pem -out creds/client_cert.pem -confi
 chmod 400 creds/client_key.pem
 ```
 
-**To run locally:**
+To run the container locally with mTLS, use the following command:
+
 ```bash
 docker run -d -p 7432:7432 \
 -e STACKQL_GITHUB_USERNAME \
 -e STACKQL_GITHUB_PASSWORD \
 -e SECURE_MODE=true -v $(pwd)/creds:/opt/stackql/srv/credentials \
 stackql-server
-```
 
-**Or using Dockerhub image:**
-```bash
-# Use -e to supply provider credentials as needed (GitHub credentials used in this example)
+# or if using the Dockerhub image...
+
 docker run -d -p 7432:7432 \
 -e STACKQL_GITHUB_USERNAME \
 -e STACKQL_GITHUB_PASSWORD \
@@ -132,12 +136,13 @@ docker run -d -p 7432:7432 \
 stackql/stackql-server
 ```
 
-**Connecting to the Secure Server:**
+To connect to the server (configured for mTLS), use the following command:
+
 ```bash
-export PGSSLCERT=creds/client_cert.pem
-export PGSSLKEY=creds/client_key.pem
-export PGSSLROOTCERT=creds/server_cert.pem
-export PGSSLMODE=require
+PGSSLCERT=creds/client_cert.pem
+PGSSLKEY=creds/client_key.pem
+PGSSLROOTCERT=creds/server_cert.pem
+PGSSLMODE=require
 psql -h localhost -p 7432 -d stackql
 ```
 
@@ -145,51 +150,7 @@ psql -h localhost -p 7432 -d stackql
 
 To deploy the container in Azure Container Instances (ACI) using an image from Docker Hub, you can follow these steps:
 
-1. **Create Key Vault (AKV) and Set Secrets:**
-If you're using Azure Key Vault for storing secrets, replace the values with your specific details.
-
-a. **Create a Key Vault:**
-
-```bash
-# create keyvault
-az keyvault create --name stackqlkv --resource-group stackql-activity-monitor-rg --location eastus
-```
-
-b. **Create a Service Principal:**
-```bash
-# create service principal
-APP_ID=$(az ad sp create-for-rbac --name stackqlsp --skip-assignment --query "appId" -o tsv)
-```
-This command will output JSON with `appId`, `displayName`, `password`, and `tenant`. The `password` field is the static credential you can use as a secret (`KEYVAULT_CREDENTIAL`).
-
-c. **Assign the Service Principal Access to the Key Vault:**
-```bash
-# assign access to keyvault
-az keyvault set-policy --name stackqlkv --spn $APP_ID --secret-permissions get list
-```
-
-d. **Create Secrets in the Key Vault:**
-```bash
-# Create secret for stackql server cert
-az keyvault secret set \
---vault-name stackqlkv \
---name stackql-server-cert \
---value "$(cat creds/server_cert.pem)" > /dev/null
-
-# Create secret for stackql server key
-az keyvault secret set \
---vault-name stackqlkv \
---name stackql-server-key \
---value "$(cat creds/server_key.pem)" > /dev/null
-
-# Create secret for stackql client cert
-az keyvault secret set \
---vault-name stackqlkv \
---name stackql-client-cert \
---value "$(cat creds/client_cert.pem)" > /dev/null
-```
-
-2. **Create an Azure Container Instance:**
+1. **Create an Azure Container Instance:**
 To create an instance, use the Azure CLI. Replace values for `name`, `resource-group`, and `dns-name-label` with your specific details. The `--dns-name-label` should be a unique DNS name for the ACI.
 ```bash
 SERVER_CERT=$(base64 -w 0 creds/server_cert.pem)
@@ -209,9 +170,9 @@ SERVER_CERT=$SERVER_CERT \
 SERVER_KEY=$SERVER_KEY \
 CLIENT_CERT=$CLIENT_CERT
 ```
-Make sure to replace the environment variable values with the ones you need for your setup.
+Replace the environment variable values with the ones you need for your setup.
 
-3. **Retrieve the Fully Qualified Domain Name (FQDN) of the ACI:**
+2. **Retrieve the Fully Qualified Domain Name (FQDN) of the ACI:**
 After the ACI is successfully deployed, retrieve its FQDN:
 ```bash
 az container show \
@@ -220,14 +181,9 @@ az container show \
 --query ipAddress.fqdn \
 --output tsv
 ```
-This FQDN is used to connect to your StackQL server.
 
 4. **Connect to the Server:**
-Use the FQDN obtained above to connect to your StackQL server using a PostgreSQL client:
-```bash
-psql -h stackql.eastus.azurecontainer.io -p 7432 -U stackql -d stackql
-```
-For connections over mTLS, ensure that the client machine has the necessary client certificates configured, for example:
+Use the FQDN obtained above to connect to your StackQL server using a PostgreSQL client.  For connections over mTLS, ensure that the client machine has the necessary client certificates configured, for example:
 
 ```bash
 export PGSSLCERT=creds/client_cert.pem
