@@ -80,6 +80,7 @@ docker run -d -p 7432:7432 \
 -e STACKQL_GITHUB_USERNAME \
 -e STACKQL_GITHUB_PASSWORD \
 stackql-server
+
 # or if using the Dockerhub image...
 docker run -d -p 7432:7432 \
 -e STACKQL_GITHUB_USERNAME \
@@ -89,13 +90,16 @@ stackql/stackql-server
 
 **Connecting to the server:**
 ```bash
+export PGSSLMODE=allow # or disable
 psql -h localhost -p 7432 -U stackql -d stackql
 ```
 
 **To stop the container:**
 ```bash
 docker stop $(docker ps -a -q --filter ancestor=stackql-server)
+
 # or if using the Dockerhub image...
+
 docker stop $(docker ps -a -q --filter ancestor=stackql/stackql-server)
 ```
 
@@ -141,24 +145,48 @@ psql -h localhost -p 7432 -d stackql
 
 To deploy the container in Azure Container Instances (ACI) using an image from Docker Hub, you can follow these steps:
 
-1. **Set Secrets in Azure Key Vault (AKV):**
-If you're using Azure Key Vault for storing secrets, replace the `vault-name` and the values with your specific details:
+1. **Create Key Vault (AKV) and Set Secrets:**
+If you're using Azure Key Vault for storing secrets, replace the values with your specific details.
+
+a. **Create a Key Vault:**
+
 ```bash
-# create secret for stackql server cert
+# create keyvault
+az keyvault create --name stackqlkv --resource-group stackql-activity-monitor-rg --location eastus
+```
+
+b. **Create a Service Principal:**
+```bash
+# create service principal
+APP_ID=$(az ad sp create-for-rbac --name stackqlsp --skip-assignment --query "appId" -o tsv)
+```
+This command will output JSON with `appId`, `displayName`, `password`, and `tenant`. The `password` field is the static credential you can use as a secret (`KEYVAULT_CREDENTIAL`).
+
+c. **Assign the Service Principal Access to the Key Vault:**
+```bash
+# assign access to keyvault
+az keyvault set-policy --name stackqlkv --spn $APP_ID --secret-permissions get list
+```
+
+d. **Create Secrets in the Key Vault:**
+```bash
+# Create secret for stackql server cert
 az keyvault secret set \
 --vault-name stackqlkv \
---name stackql_server_cert \
---value secretvalue
-# create secret for stackql server key
+--name stackql-server-cert \
+--value "$(cat creds/server_cert.pem)" > /dev/null
+
+# Create secret for stackql server key
 az keyvault secret set \
 --vault-name stackqlkv \
---name stackql_server_key \
---value secretvalue
-# create secret for stackql client cert
+--name stackql-server-key \
+--value "$(cat creds/server_key.pem)" > /dev/null
+
+# Create secret for stackql client cert
 az keyvault secret set \
 --vault-name stackqlkv \
---name stackql_client_cert \
---value secretvalue
+--name stackql-client-cert \
+--value "$(cat creds/client_cert.pem)" > /dev/null
 ```
 
 2. **Create an Azure Container Instance:**
@@ -218,3 +246,12 @@ az container logs \
 --name stackqlserver
 ```
 This command retrieves the logs produced by the container.
+
+6. **Delete the Container Instance:**
+
+To delete the container instance, use the Azure CLI:
+```bash
+az container delete \
+--resource-group stackql-activity-monitor-rg \
+--name stackqlserver
+```
