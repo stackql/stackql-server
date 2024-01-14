@@ -8,6 +8,9 @@ ENV POSTGRES_USER=stackql
 ENV POSTGRES_PASSWORD=stackql
 ENV POSTGRES_DB=stackql
 
+# Environment variable to toggle DEBUG mode
+ENV DEBUG=false
+
 # Environment variable to toggle SECURE_MODE
 ENV SECURE_MODE=false
 
