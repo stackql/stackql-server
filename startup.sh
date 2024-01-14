@@ -44,12 +44,20 @@ check_certs_and_keys() {
 
 # Function to start StackQL with or without mTLS
 start_stackql() {
+    # Initialize debug arguments
+    local debug_args=""
+
+    # Check if DEBUG mode is enabled
+    if [ "$DEBUG" = "true" ]; then
+        debug_args="--loglevel=debug --pgsrv.loglevel=DEBUG"
+    fi
+
     if [ "$SECURE_MODE" = "true" ]; then
         echo "Running with mTLS..."
         set_cert_dir
         check_certs_and_keys
         CLIENT_CA_ENCODED=$(base64 -w 0 "$CERT_DIR/client_cert.pem")
-        # Start the server with TLS configuration
+        # Start the server with TLS configuration and potentially debug arguments
         /srv/stackql/stackql srv --approot=/srv/stackql/.stackql \
         --pgsrv.port=$PGSRV_PORT \
         --sqlBackend="{\"dbEngine\": \"postgres_tcp\", \"sqlDialect\": \"postgres\", \"dsn\": \"postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}\"}" \
@@ -57,12 +65,13 @@ start_stackql() {
             \"keyFilePath\": \"$CERT_DIR/server_key.pem\", \
             \"certFilePath\": \"$CERT_DIR/server_cert.pem\", \
             \"clientCAs\": [\"$CLIENT_CA_ENCODED\"] \
-        }"
+        }" $debug_args
     else
         echo "Running without mTLS..."
+        # Start the server without TLS configuration but with potentially debug arguments
         /srv/stackql/stackql srv --approot=/srv/stackql/.stackql \
         --pgsrv.port=$PGSRV_PORT \
-        --sqlBackend="{\"dbEngine\": \"postgres_tcp\", \"sqlDialect\": \"postgres\", \"dsn\": \"postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}\"}"
+        --sqlBackend="{\"dbEngine\": \"postgres_tcp\", \"sqlDialect\": \"postgres\", \"dsn\": \"postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}\"}" $debug_args
     fi
 }
 
