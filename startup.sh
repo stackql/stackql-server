@@ -83,3 +83,4 @@ fi
 
 # Start StackQL
 start_stackql
+
